@@ -17,7 +17,14 @@ module.exports = {
   },
   module: {
     rules: [
-      /* your custom rules here */
+      {
+        test: /\.jsx?/,
+        exclude: /node_modules/,
+        loader: 'babel-loader',
+        options: {
+          presets: ['@babel/preset-env'],
+        },
+      },
     ].concat(vtkRules),
   },
   resolve: {

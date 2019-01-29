@@ -1,52 +1,65 @@
-/* This is the Cone example from vtk.js examples. */
+import React from 'react';
+import ReactDOM from 'react-dom';
 
-import 'vtk.js/Sources/favicon';
-
+import Constants from 'vtk.js/Sources/Rendering/Core/ImageMapper/Constants';
 import vtkFullScreenRenderWindow from 'vtk.js/Sources/Rendering/Misc/FullScreenRenderWindow';
-import vtkActor from 'vtk.js/Sources/Rendering/Core/Actor';
-import vtkConeSource from 'vtk.js/Sources/Filters/Sources/ConeSource';
-import vtkMapper from 'vtk.js/Sources/Rendering/Core/Mapper';
+import vtkRTAnalyticSource from 'vtk.js/Sources/Filters/Sources/RTAnalyticSource';
+import vtkImageMapper from 'vtk.js/Sources/Rendering/Core/ImageMapper';
+import vtkImageSlice from 'vtk.js/Sources/Rendering/Core/ImageSlice';
+import vtkInteractorStyleImage from 'vtk.js/Sources/Interaction/Style/InteractorStyleImage';
+import vtkColorTransferFunction from 'vtk.js/Sources/Rendering/Core/ColorTransferFunction';
+import vtkPiecewiseFunction from 'vtk.js/Sources/Common/DataModel/PiecewiseFunction';
 
-// ----------------------------------------------------------------------------
-// Standard rendering code setup
-// ----------------------------------------------------------------------------
+const { SlicingMode } = Constants;
 
-const fullScreenRenderer = vtkFullScreenRenderWindow.newInstance({
-  background: [0, 0, 0],
-});
-const renderer = fullScreenRenderer.getRenderer();
-const renderWindow = fullScreenRenderer.getRenderWindow();
+class Vtk2D extends React.Component {
 
-// ----------------------------------------------------------------------------
-// Example code
-// ----------------------------------------------------------------------------
+  constructor(props) {
+    super(props);
 
-function createConePipeline() {
-  const coneSource = vtkConeSource.newInstance();
-  const actor = vtkActor.newInstance();
-  const mapper = vtkMapper.newInstance();
+    this.fullScreenRenderer = null;
+    this.container = React.createRef();
+  }
 
-  actor.setMapper(mapper);
-  mapper.setInputConnection(coneSource.getOutputPort());
+  createSlicePipeline() {
+    const source = vtkRTAnalyticSource.newInstance();
+    source.setWholeExtent(0, 200, 0, 200, 0, 200);
+    source.setCenter(100, 100, 100);
+    source.setStandardDeviation(0.1);
 
-  renderer.addActor(actor);
-  return { coneSource, mapper, actor };
+    const mapper = vtkImageMapper.newInstance();
+    mapper.setInputConnection(source.getOutputPort());
+    mapper.setSliceAtFocalPoint(true);
+    mapper.setSlicingMode(SlicingMode.Z);
+
+    const actor = vtkImageSlice.newInstance();
+    actor.getProperty().setColorWindow(255);
+    actor.getProperty().setColorLevel(127);
+    actor.setMapper(mapper);
+
+    return { source, mapper, actor };
+  }
+
+  componentDidMount() {
+    this.fullScreenRenderer = vtkFullScreenRenderWindow.newInstance({
+      rootContainer: this.container.current,
+      containerStyle: {},
+    });
+
+    this.pipeline = this.createSlicePipeline();
+
+    const renderer = this.fullScreenRenderer.getRenderer();
+    const renderWindow = this.fullScreenRenderer.getRenderWindow();
+    renderer.addActor(this.pipeline.actor);
+    renderer.resetCamera();
+    renderWindow.render();
+  }
+
+  render() {
+    return (
+      <div ref={this.container} />
+    );
+  }
 }
 
-const pipelines = [createConePipeline(), createConePipeline()];
-
-// Create red wireframe baseline
-pipelines[0].actor.getProperty().setRepresentation(1);
-pipelines[0].actor.getProperty().setColor(1, 0, 0);
-
-renderer.resetCamera();
-renderWindow.render();
-
-// -----------------------------------------------------------
-// Make some variables global so that you can inspect and
-// modify objects in your browser's developer console:
-// -----------------------------------------------------------
-
-global.pipelines = pipelines;
-global.renderer = renderer;
-global.renderWindow = renderWindow;
+ReactDOM.render(<Vtk2D />, document.getElementById('vtkroot'));
