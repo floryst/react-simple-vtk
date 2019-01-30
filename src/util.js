@@ -3,10 +3,11 @@ export function createSub(sub) {
   const unsubscribe = () => {
     if (s) {
       s.unsubscribe();
+      s = null;
     }
   };
   return {
-    update(newSub) {
+    sub(newSub) {
       unsubscribe();
       s = newSub;
     },
