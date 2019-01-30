@@ -9,6 +9,7 @@ function viewTypeFromRenderType(renderType) {
 	let viewType = null;
 	switch (renderType) {
 		case '2d':
+		case 'mpr':
 			viewType = ViewTypes.SLICE;
 			break;
 		case '3d':

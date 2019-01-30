@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom';
 import vtkRTAnalyticSource from 'vtk.js/Sources/Filters/Sources/RTAnalyticSource';
 
 import createVtk2D from './vtk2d';
+import createVtkMPR from './vtkmpr';
 import createPaintContext from './paint';
 
 function createContext() {
@@ -18,6 +19,7 @@ function createContext() {
 
 	return {
 		Vtk2D: paint.wrapVtk(createVtk2D(state)),
+		VtkMPR: paint.wrapVtk(createVtkMPR(state)),
 		// internal
 		state,
 		paint,
@@ -33,7 +35,7 @@ source.setStandardDeviation(0.1);
 const ctx = createContext();
 window.ctx = ctx;
 
-const { Vtk2D } = ctx;
+const { Vtk2D, VtkMPR } = ctx;
 
 class App extends React.Component {
 	constructor(props) {
@@ -44,6 +46,7 @@ class App extends React.Component {
 	}
 
 	render() {
+		/*
 		return (
 			<Vtk2D
 				data={source.getOutputData()}
@@ -51,6 +54,10 @@ class App extends React.Component {
 				slice={this.state.slice}
 				onSliceChange={(slice) => this.setState({ slice })}
 			/>
+		);
+		*/
+		return (
+			<VtkMPR data={source.getOutputData()} />
 		);
 	}
 }
