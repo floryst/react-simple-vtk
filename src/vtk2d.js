@@ -1,14 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 import Constants from 'vtk.js/Sources/Rendering/Core/ImageMapper/Constants';
 import vtkFullScreenRenderWindow from 'vtk.js/Sources/Rendering/Misc/FullScreenRenderWindow';
-import vtkRTAnalyticSource from 'vtk.js/Sources/Filters/Sources/RTAnalyticSource';
 import vtkImageMapper from 'vtk.js/Sources/Rendering/Core/ImageMapper';
 import vtkImageSlice from 'vtk.js/Sources/Rendering/Core/ImageSlice';
 import vtkInteractorStyleImage from 'vtk.js/Sources/Interaction/Style/InteractorStyleImage';
 import vtkColorTransferFunction from 'vtk.js/Sources/Rendering/Core/ColorTransferFunction';
 import vtkPiecewiseFunction from 'vtk.js/Sources/Common/DataModel/PiecewiseFunction';
+import vtkWidgetManager from 'vtk.js/Sources/Widgets/Core/WidgetManager';
 
 import { createPaintContext } from './paint';
 import { createSub } from './util';
@@ -26,7 +25,8 @@ function createSlicePipeline() {
   return { mapper, actor };
 }
   
-class Vtk2D extends React.Component {
+export default function createVtk2D(state) {
+  return class Vtk2D extends React.Component {
 
   /* props
   data: vtkDataset OR dataPort: algo func
@@ -39,6 +39,7 @@ class Vtk2D extends React.Component {
       super(props);
   
       this.fullScreenRenderer = null;
+      this.widgetManager = vtkWidgetManager.newInstance();
       this.container = React.createRef();
       this.dataSub = createSub();
     }
@@ -92,6 +93,7 @@ class Vtk2D extends React.Component {
         containerStyle: {},
       });
       const renderer = this.fullScreenRenderer.getRenderer();
+      const renderWindow = this.fullScreenRenderer.getRenderWindow();
 
       this.pipeline = createSlicePipeline();
       // export out mapper slice state
@@ -106,13 +108,21 @@ class Vtk2D extends React.Component {
 
       // TODO maybe make interactor selection a prop?
       // Scrolling Interactor
+      // NOTE: this means that the component onSliceChange event should be
+      // fed into the slice param for consistency...(otherwise this will break
+      // the paint widget context...)
       const iStyle = vtkInteractorStyleImage.newInstance();
       iStyle.setInteractionMode('IMAGE_SLICING');
       renderer.getRenderWindow().getInteractor().setInteractorStyle(iStyle);
 
-      if (this.props.widgetManager) {
-        this.props.widgetManager.setRenderer(renderer);
-      }
+      this.widgetManager.setRenderer(renderer);
+
+      state.views.push({
+        type: '2d',
+        renderWindow,
+        renderer,
+        widgetManager: this.widgetManager,
+      });
     }
   
     componentDidUpdate(prevProps) {
@@ -155,30 +165,22 @@ class Vtk2D extends React.Component {
         renderWindow.render();
       }
     }
+
+    componentWillUnmount() {
+      const renderWindow = this.fullScreenRenderer.getRenderWindow();
+      const index = state.views.findIndex((v) => v.renderWindow === renderWindow);
+      if (index > -1) {
+        state.view.splice(index, 1);
+      }
+    }
   
     render() {
+      // why do I do things like this
+      const containerProps = this.props.containerProps || {};
       return (
-        <div ref={this.container} />
+        <div ref={this.container} {...containerProps} />
       );
     }
   }
+}
 
-
-// for image data only
-const source = vtkRTAnalyticSource.newInstance();
-source.setWholeExtent(0, 200, 0, 200, 0, 200);
-source.setCenter(100, 100, 100);
-source.setStandardDeviation(0.1);
-
-const cxt = createPaintContext();
-window.cxt = cxt;
-const Wrapped = cxt.wrapVtk(Vtk2D, 'slice');
-
-ReactDOM.render(
-  <Wrapped
-    data={source.getOutputData()}
-    axis="K"
-    slice={10}
-  />,
-  document.getElementById('vtkroot')
-);
